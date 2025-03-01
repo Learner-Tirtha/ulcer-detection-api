@@ -1,6 +1,11 @@
 ﻿services:
   - type: web
     name: ulcer-detection-api
-    runtime: python  
+    runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ULCER_MODEL_PATH
+        value: "/models/best_ulcer_classifier.h5"
+      - key: SEVERITY_MODEL_PATH
+        value: "/models/dfu_severity_final.h5"
