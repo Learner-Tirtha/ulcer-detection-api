@@ -1,4 +1,7 @@
-﻿from fastapi import FastAPI, File, UploadFile
+﻿import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # Disable GPU
+
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 import tensorflow as tf
 from tensorflow.keras.models import load_model
