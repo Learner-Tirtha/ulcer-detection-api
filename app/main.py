@@ -9,10 +9,11 @@ import io
 import os
 from app.model_loader import load_models
 
-# Define model paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ULCER_MODEL_PATH = os.path.join(BASE_DIR, "models/best_ulcer_classifier.h5")
-SEVERITY_MODEL_PATH = os.path.join(BASE_DIR, "models/dfu_severity_final.h5")
+MODELS_DIR = os.path.join(BASE_DIR, "..", "models")  # Move up a level
+ULCER_MODEL_PATH = os.path.join(MODELS_DIR, "best_ulcer_classifier.h5")
+SEVERITY_MODEL_PATH = os.path.join(MODELS_DIR, "dfu_severity_final.h5")
+
 
 # Load models
 ulcer_model, severity_model = load_models(ULCER_MODEL_PATH, SEVERITY_MODEL_PATH)
