@@ -1,44 +1,45 @@
-﻿import os
-import io
-import numpy as np
-from fastapi import FastAPI, File, UploadFile
+﻿from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
+import numpy as np
 from PIL import Image
-from dotenv import load_dotenv
-from app.image_processor import preprocess_image
+import io
+import os
 from app.model_loader import load_models
 
-# Load environment variables
-load_dotenv()
-
-# Get model paths from environment variables
-ULCER_MODEL_PATH = os.getenv("ULCER_MODEL_PATH", "models/best_ulcer_classifier.h5")
-SEVERITY_MODEL_PATH = os.getenv("SEVERITY_MODEL_PATH", "models/dfu_severity_final.h5")
+# Define model paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ULCER_MODEL_PATH = os.path.join(BASE_DIR, "models/best_ulcer_classifier.h5")
+SEVERITY_MODEL_PATH = os.path.join(BASE_DIR, "models/dfu_severity_final.h5")
 
 # Load models
 ulcer_model, severity_model = load_models(ULCER_MODEL_PATH, SEVERITY_MODEL_PATH)
 
-# Class labels
-ULCER_LABELS = ["Non-Ulcer", "Ulcer"]
-SEVERITY_LABELS = ["Mild", "Moderate", "Severe"]
+# Define class labels
+ulcer_labels = ["Non-Ulcer", "Ulcer"]
+severity_labels = ["Mild", "Moderate", "Severe"]  # Adjust based on model output classes
 
 # Initialize FastAPI app
-app = FastAPI(
-    title="Ulcer Detection & Severity API",
-    description="Upload an image to detect ulcers and assess severity.",
-    version="1.1",
-)
+app = FastAPI(title="Ulcer Detection & Severity API", description="Upload an image to detect ulcers and assess severity.", version="1.1")
 
-# Enable CORS for frontend/mobile integration
+# Enable CORS (Allow frontend/mobile access)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to specific domains in production
+    allow_origins=["*"],  # Change this to specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Image preprocessing function
+def preprocess_image(image_data):
+    img = Image.open(io.BytesIO(image_data)).convert("RGB")  # Convert to RGB
+    img = img.resize((224, 224))  # Resize to match model input size
+    img_array = image.img_to_array(img) / 255.0  # Normalize pixel values
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    return img_array
 
 @app.get("/")
 def home():
@@ -55,7 +56,7 @@ async def predict(file: UploadFile = File(...)):
         
         # Ulcer classification
         ulcer_prediction = ulcer_model.predict(img_array)[0][0]
-        ulcer_result = ULCER_LABELS[int(ulcer_prediction > 0.5)]
+        ulcer_result = ulcer_labels[int(ulcer_prediction > 0.5)]
         
         response = {"prediction": ulcer_result}
 
@@ -63,14 +64,10 @@ async def predict(file: UploadFile = File(...)):
         if ulcer_result == "Ulcer":
             severity_prediction = severity_model.predict(img_array)
             severity_class = np.argmax(severity_prediction)  # Get class with highest probability
-            severity_result = SEVERITY_LABELS[severity_class]
+            severity_result = severity_labels[severity_class]
             response["severity"] = severity_result
 
         return response
 
     except Exception as e:
         return {"error": str(e)}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
